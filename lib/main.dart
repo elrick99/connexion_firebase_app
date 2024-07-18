@@ -58,7 +58,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Flutter Connexion OTP Firebase'),
     );
   }
 }
@@ -83,8 +83,11 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController phone = TextEditingController();
+  final TextEditingController otpCode = TextEditingController();
    bool showLoading = false;
-  bool isOtpInput = false;
+   bool isOtpInput = false;
+   bool isConnected = false;
+   String verificationId = '';
   @override
   void initState() {
     super.initState();
@@ -107,16 +110,33 @@ class _MyHomePageState extends State<MyHomePage> {
             SnackBar(content: Text('$e'), backgroundColor: Colors.red,)
         );
       },
-      codeSent: (String verificationId,
-          int? resendToken) {
+      codeSent: (String verificationId, int? resendToken) {
         setState(() {
           showLoading = false;
+          isOtpInput = true;
         });
-        isOtpInput = true;
+
+        verificationId = verificationId;
+
       },
-      codeAutoRetrievalTimeout:
-          (String verificationId) {},
+      codeAutoRetrievalTimeout:(String verificationId) {},
     );
+  }
+
+  _verifOtp() async{
+    setState(() {
+      showLoading = true;
+    });
+    PhoneAuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: otpCode.text
+    );
+    await FirebaseAuth.instance.signInWithCredential(credential);
+    setState(() {
+      showLoading = false;
+      isOtpInput = false;
+      isConnected=true;
+    });
   }
 
 
@@ -141,72 +161,75 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Center(
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            // const Text(
-            //   'You have pushed the button this many times:',
-            // ),
-            // Text(
-            //   '$_counter',
-            //   style: Theme.of(context).textTheme.headlineMedium,
-            // ),
-            SizedBox(
-              height: 60,
-              width: MediaQuery.of(context).size.width,
-              child: TextFormField(
-                controller: phone,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'Phone Number',
+        child:isConnected ? const  Text('Connected'): Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            // Column is also a layout widget. It takes a list of children and
+            // arranges them vertically. By default, it sizes itself to fit its
+            // children horizontally, and tries to be as tall as its parent.
+            //
+            // Column has various properties to control how it sizes itself and
+            // how it positions its children. Here we use mainAxisAlignment to
+            // center the children vertically; the main axis here is the vertical
+            // axis because Columns are vertical (the cross axis would be
+            // horizontal).
+            //
+            // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
+            // action in the IDE, or press "p" in the console), to see the
+            // wireframe for each widget.
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              // const Text(
+              //   'You have pushed the button this many times:',
+              // ),
+              // Text(
+              //   '$_counter',
+              //   style: Theme.of(context).textTheme.headlineMedium,
+              // ),
+              SizedBox(
+                height: 60,
+                width: MediaQuery.of(context).size.width,
+                child: TextFormField(
+                  controller: phone,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'Phone Number',
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(
-              height: 40,
-            ),
-            isOtpInput==true?SizedBox(
-              height: 60,
-              width: MediaQuery.of(context).size.width,
-              child: TextFormField(
-                controller: phone,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'OTP Number',
-                ),
+              const SizedBox(
+                height: 40,
               ),
-            ):const SizedBox(height: 0,),
-            const SizedBox(
-              height: 20,
-            ),
-            SizedBox(
-              height: 60,
-              width: 200,
-              child: MaterialButton(
-                onPressed: _connexion,
-                color: Colors.deepPurple,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)
+              isOtpInput==true?SizedBox(
+                height: 60,
+                width: MediaQuery.of(context).size.width,
+                child: TextFormField(
+                  controller: otpCode,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'OTP Number',
+                  ),
                 ),
-                child: showLoading?const CircularProgressIndicator(color: Colors.white,): const Text('Connexion', style: TextStyle(color:Colors.white,),)
+              ):const SizedBox(height: 0,),
+              const SizedBox(
+                height: 20,
               ),
-            )
-          ],
+              SizedBox(
+                height: 60,
+                width: 200,
+                child: MaterialButton(
+                  onPressed: isOtpInput==false? _connexion : _verifOtp,
+                  color: Colors.deepPurple,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)
+                  ),
+                  child: showLoading?const CircularProgressIndicator(color: Colors.white,): const Text('Connexion', style: TextStyle(color:Colors.white,),)
+                ),
+              )
+            ],
+          ),
         ),
       ),// This trailing comma makes auto-formatting nicer for build methods.
     );
