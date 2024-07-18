@@ -1,6 +1,33 @@
+// import 'package:connexion_firebase_app/firebase_options.dart';
+import 'package:connexion_firebase_app/firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-
-void main() {
+import 'package:firebase_app_check/firebase_app_check.dart';
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  await FirebaseAppCheck.instance.activate(
+    // You can also use a `ReCaptchaEnterpriseProvider` provider instance as an
+    // argument for `webProvider`
+    webProvider: ReCaptchaV3Provider('recaptcha-v3-site-key'),
+    // Default provider for Android is the Play Integrity provider. You can use the "AndroidProvider" enum to choose
+    // your preferred provider. Choose from:
+    // 1. Debug provider
+    // 2. Safety Net provider
+    // 3. Play Integrity provider
+    androidProvider: AndroidProvider.debug,
+    // Default provider for iOS/macOS is the Device Check provider. You can use the "AppleProvider" enum to choose
+    // your preferred provider. Choose from:
+    // 1. Debug provider
+    // 2. Device Check provider
+    // 3. App Attest provider
+    // 4. App Attest provider with fallback to Device Check provider (App Attest provider is only available on iOS 14.0+, macOS 14.0+)
+    appleProvider: AppleProvider.appAttest,
+  );
+  
   runApp(const MyApp());
 }
 
@@ -55,18 +82,43 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  final TextEditingController phone = TextEditingController();
+   bool showLoading = false;
+  bool isOtpInput = false;
+  @override
+  void initState() {
+    super.initState();
   }
+
+  _connexion() async{
+    setState(() {
+      showLoading = true;
+    });
+    print('${phone.text}');
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: '+225${phone.text}',
+      verificationCompleted:(PhoneAuthCredential credential) {},
+      verificationFailed:(FirebaseAuthException e) {
+        setState(() {
+          showLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$e'), backgroundColor: Colors.red,)
+        );
+      },
+      codeSent: (String verificationId,
+          int? resendToken) {
+        setState(() {
+          showLoading = false;
+        });
+        isOtpInput = true;
+      },
+      codeAutoRetrievalTimeout:
+          (String verificationId) {},
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -105,21 +157,58 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+            // const Text(
+            //   'You have pushed the button this many times:',
+            // ),
+            // Text(
+            //   '$_counter',
+            //   style: Theme.of(context).textTheme.headlineMedium,
+            // ),
+            SizedBox(
+              height: 60,
+              width: MediaQuery.of(context).size.width,
+              child: TextFormField(
+                controller: phone,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Phone Number',
+                ),
+              ),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            const SizedBox(
+              height: 40,
             ),
+            isOtpInput==true?SizedBox(
+              height: 60,
+              width: MediaQuery.of(context).size.width,
+              child: TextFormField(
+                controller: phone,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'OTP Number',
+                ),
+              ),
+            ):const SizedBox(height: 0,),
+            const SizedBox(
+              height: 20,
+            ),
+            SizedBox(
+              height: 60,
+              width: 200,
+              child: MaterialButton(
+                onPressed: _connexion,
+                color: Colors.deepPurple,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)
+                ),
+                child: showLoading?const CircularProgressIndicator(color: Colors.white,): const Text('Connexion', style: TextStyle(color:Colors.white,),)
+              ),
+            )
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),// This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
